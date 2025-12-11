@@ -1,4 +1,4 @@
-Background
+**Background**
 
 Mastery is a web platform where:
 
@@ -165,4 +165,6 @@ References:
 DSL Code for above example
 
 Mastery_C4_Model.dsl
+https://github.com/santoshmanya/architecture-as-code/blob/main/C4Model/Mastery_C4_Model.dsl
+
 Screenshot of how to upload dsl file  in structurizr and render it.
