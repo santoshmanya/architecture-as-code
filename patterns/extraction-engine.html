@@ -1,0 +1,999 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Extraction Engine · Enterprise Memory</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #08090d;
+    --panel: #0f1117;
+    --panel2: #13161e;
+    --border: #1a1f2e;
+    --border2: #242b3d;
+    --text: #9aa3b8;
+    --text-bright: #dde4f0;
+    --text-dim: #444d63;
+    --accent: #e8ff47;
+    --accent2: #00d4aa;
+    --warn: #ff6b47;
+    --blue: #4d9fff;
+    --purple: #9b6dff;
+    --green: #3ddc84;
+    --mongo: #00ed64;
+    --pg: #4d9fff;
+    --pgv: #9b6dff;
+    --md: #ffb347;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    padding: 48px 28px;
+    min-height: 100vh;
+  }
+
+  .page { max-width: 1080px; margin: 0 auto; }
+
+  /* HEADER */
+  .masthead {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    border-bottom: 1px solid var(--border2);
+    padding-bottom: 24px;
+    margin-bottom: 48px;
+  }
+
+  .masthead-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 4px;
+    margin-bottom: 10px;
+  }
+
+  .masthead h1 {
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--text-bright);
+    letter-spacing: -1px;
+    line-height: 1.1;
+  }
+
+  .masthead h1 span { color: var(--accent); }
+
+  .masthead-meta {
+    text-align: right;
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 1.9;
+  }
+
+  /* SECTION */
+  .section { margin-bottom: 52px; }
+
+  .sec-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .sec-num {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    background: rgba(232,255,71,0.07);
+    border: 1px solid rgba(232,255,71,0.15);
+    padding: 3px 8px;
+    border-radius: 3px;
+    letter-spacing: 2px;
+  }
+
+  .sec-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: -0.3px;
+  }
+
+  .sec-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* TRIGGER BOX */
+  .trigger-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .trigger-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+  }
+
+  .trigger-card .t-icon { font-size: 18px; margin-bottom: 8px; }
+  .trigger-card .t-name { font-size: 12px; font-weight: 700; color: var(--text-bright); margin-bottom: 4px; }
+  .trigger-card .t-desc { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+  .trigger-card .t-when {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    margin-top: 8px;
+  }
+
+  /* CODE BLOCK */
+  .code-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .code-header {
+    background: var(--panel2);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .code-header .ch-title {
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .code-header .ch-lang {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    color: var(--accent);
+    background: rgba(232,255,71,0.08);
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+  }
+
+  .code-body {
+    padding: 20px 20px;
+    font-family: 'Fira Code', monospace;
+    font-size: 11.5px;
+    line-height: 1.85;
+    overflow-x: auto;
+  }
+
+  .k { color: var(--purple); }
+  .s { color: var(--green); }
+  .c { color: #2d3a50; }
+  .n { color: var(--blue); }
+  .v { color: var(--accent2); }
+  .t { color: var(--text); }
+  .w { color: var(--warn); }
+  .a { color: var(--accent); }
+  .m { color: var(--md); }
+
+  /* JSON SCHEMA GRID */
+  .schema-master {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .schema-master-header {
+    background: var(--panel2);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    color: var(--text-bright);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .schema-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .schema-tab {
+    padding: 10px 16px;
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .schema-tab:last-child { border-right: none; }
+  .schema-tab .tab-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .schema-body-cols {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .schema-col {
+    border-right: 1px solid var(--border);
+    padding: 20px;
+  }
+
+  .schema-col:last-child { border-right: none; }
+  .schema-col:nth-child(3), .schema-col:nth-child(4) { border-top: 1px solid var(--border); }
+
+  .sc-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .sc-label .dot { width: 5px; height: 5px; border-radius: 50%; }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+    margin-bottom: 5px;
+    font-family: 'Fira Code', monospace;
+    font-size: 10.5px;
+    padding: 4px 6px;
+    border-radius: 4px;
+  }
+
+  .field-row:hover { background: rgba(255,255,255,0.02); }
+
+  .fr-name { color: var(--blue); }
+  .fr-type { color: var(--text-dim); }
+  .fr-note { grid-column: 1 / -1; font-size: 9.5px; color: #2d3a50; padding-left: 2px; }
+
+  /* ROUTING TABLE */
+  .routing-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .routing-table th {
+    background: var(--panel2);
+    padding: 10px 14px;
+    text-align: left;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .routing-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    font-size: 11px;
+    vertical-align: top;
+  }
+
+  .routing-table tr:hover td { background: rgba(255,255,255,0.01); }
+
+  .type-badge {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    display: inline-block;
+    font-weight: 500;
+  }
+
+  .badge-fact { background: rgba(77,159,255,0.12); color: var(--blue); }
+  .badge-pref { background: rgba(0,212,170,0.1); color: var(--accent2); }
+  .badge-ep { background: rgba(255,179,71,0.1); color: var(--md); }
+  .badge-proj { background: rgba(155,109,255,0.12); color: var(--purple); }
+  .badge-sent { background: rgba(61,220,132,0.1); color: var(--green); }
+  .badge-crm { background: rgba(255,107,71,0.1); color: var(--warn); }
+
+  .store-tag {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    display: inline-block;
+    margin: 1px;
+  }
+
+  .st-mongo { background: rgba(0,237,100,0.1); color: var(--mongo); }
+  .st-pg { background: rgba(77,159,255,0.1); color: var(--pg); }
+  .st-pgv { background: rgba(155,109,255,0.1); color: var(--pgv); }
+  .st-md { background: rgba(255,179,71,0.1); color: var(--md); }
+
+  /* PROMPT PANEL */
+  .prompt-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .pp-header {
+    background: var(--panel2);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .pp-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-bright);
+  }
+
+  .pp-badge {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    background: rgba(232,255,71,0.08);
+    color: var(--accent);
+    border: 1px solid rgba(232,255,71,0.15);
+  }
+
+  .pp-body {
+    padding: 22px;
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    line-height: 1.9;
+    color: var(--text);
+  }
+
+  .pp-section-tag {
+    color: var(--text-dim);
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 2px;
+  }
+
+  .pp-instruction { color: var(--text-bright); }
+  .pp-constraint { color: var(--warn); }
+  .pp-example { color: var(--accent2); }
+  .pp-key { color: var(--blue); }
+  .pp-val { color: var(--green); }
+  .pp-comment { color: #252d40; }
+
+  /* FLOW DIAGRAM */
+  .exec-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .flow-step {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .flow-step:last-child { border-bottom: none; }
+
+  .flow-num {
+    background: var(--panel2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fira Code', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 20px 0;
+  }
+
+  .flow-content {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 16px;
+  }
+
+  .flow-content .fc-main {}
+  .flow-content .fc-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+
+  .flow-content .fc-detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    font-family: 'Fira Code', monospace;
+  }
+
+  .flow-content .fc-stores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+    align-items: flex-start;
+    padding-top: 2px;
+  }
+
+  /* NIGHTLY BATCH */
+  .batch-block {
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 24px;
+  }
+
+  .batch-grid {
+    display: grid;
+    grid-template-columns: 1fr 24px 1fr 24px 1fr;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .batch-node {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .batch-node .bn-icon { font-size: 22px; margin-bottom: 6px; }
+  .batch-node .bn-name { font-size: 11px; font-weight: 700; color: var(--text-bright); }
+  .batch-node .bn-detail { font-size: 10px; color: var(--text-dim); font-family: 'Fira Code', monospace; margin-top: 3px; }
+
+  .batch-arrow { text-align: center; color: var(--border2); font-size: 16px; }
+
+  .md-sample {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--md);
+    border-radius: 6px;
+    padding: 16px;
+    font-family: 'Fira Code', monospace;
+    font-size: 11px;
+    line-height: 1.85;
+    margin-top: 16px;
+  }
+
+  .md-h1 { color: var(--text-bright); font-weight: 600; }
+  .md-h2 { color: var(--md); }
+  .md-key { color: var(--blue); }
+  .md-val { color: var(--accent2); }
+  .md-bullet { color: var(--text-dim); }
+  .md-comment { color: #252d40; }
+
+  /* GDPR ROW */
+  .gdpr-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 8px;
+  }
+
+  .gdpr-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+  }
+
+  .gdpr-card .gc-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--warn);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .gdpr-card ul {
+    list-style: none;
+    font-family: 'Fira Code', monospace;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+
+  .gdpr-card ul li::before { content: '$ '; color: var(--border2); }
+
+  @media (max-width: 680px) {
+    .trigger-row { grid-template-columns: 1fr; }
+    .schema-body-cols { grid-template-columns: 1fr; }
+    .schema-tabs { grid-template-columns: repeat(2, 1fr); }
+    .batch-grid { grid-template-columns: 1fr; }
+    .batch-arrow { transform: rotate(90deg); }
+    .gdpr-row { grid-template-columns: 1fr; }
+    .flow-content { grid-template-columns: 1fr; }
+    .masthead { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- MASTHEAD -->
+  <div class="masthead">
+    <div>
+      <div class="masthead-label">▸ ASYNC EXTRACTION ENGINE · ENTERPRISE MEMORY LAYER</div>
+      <h1>The <span>Extraction</span> Blueprint</h1>
+    </div>
+    <div class="masthead-meta">
+      <div>MongoDB → PG → pgvector → MD</div>
+      <div>Trigger · Extract · Route · Embed</div>
+      <div>GDPR-compliant · multi-tenant</div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: TRIGGERS -->
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <span class="sec-title">Extraction Triggers</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="trigger-row">
+      <div class="trigger-card">
+        <div class="t-icon">🔚</div>
+        <div class="t-name">session_end Event</div>
+        <div class="t-desc">Primary trigger. Fired when user disconnects, timeout occurs, or explicit close. Most reliable signal.</div>
+        <div class="t-when">ON: disconnect | timeout_15m | explicit_close</div>
+      </div>
+      <div class="trigger-card">
+        <div class="t-icon">🔢</div>
+        <div class="t-name">N-Turn Threshold</div>
+        <div class="t-desc">Trigger mid-session after every 20 turns for long interactions. Prevents memory loss on crash. Incremental extraction.</div>
+        <div class="t-when">ON: turns_count % 20 == 0</div>
+      </div>
+      <div class="trigger-card">
+        <div class="t-icon">⏱️</div>
+        <div class="t-name">Time-Based Flush</div>
+        <div class="t-desc">Safety net. Catches any sessions that never fired a clean close event. Background cron every 2 hours.</div>
+        <div class="t-when">ON: cron 0 */2 * * * · stale_sessions</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: EXTRACTION PROMPT -->
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <span class="sec-title">The Extraction Prompt (LLM Worker)</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="prompt-panel">
+      <div class="pp-header">
+        <span class="pp-title">extraction_worker.system_prompt</span>
+        <span class="pp-badge">SYSTEM PROMPT · ASYNC WORKER</span>
+      </div>
+      <div class="pp-body">
+<span class="pp-comment"># ══════════════════════════════════════════════════════</span>
+<span class="pp-comment"># ROLE</span>
+<span class="pp-comment"># ══════════════════════════════════════════════════════</span>
+<span class="pp-instruction">You are a precision memory extraction engine. Your sole job is to</span>
+<span class="pp-instruction">analyze a customer support chat transcript and output structured JSON.</span>
+<span class="pp-instruction">You do not summarize. You do not paraphrase loosely. You extract exact,</span>
+<span class="pp-instruction">verifiable, durable signals from human language.</span>
+<br>
+<span class="pp-comment"># ══════════════════════════════════════════════════════</span>
+<span class="pp-comment"># EXTRACTION TAXONOMY</span>
+<span class="pp-comment"># ══════════════════════════════════════════════════════</span>
+<span class="pp-instruction">Extract ONLY the following six types. If no instance of a type exists,</span>
+<span class="pp-instruction">return an empty array for that key. Never hallucinate.</span>
+<br>
+<span class="pp-key">1. FACT</span>       <span class="pp-val">→ immutable, verifiable entity stated by the user</span>
+<span class="pp-key">2. PREFERENCE</span> <span class="pp-val">→ stated or strongly inferred behavioral preference</span>
+<span class="pp-key">3. EPISODIC</span>   <span class="pp-val">→ what happened in this session (outcome, frustration, resolution)</span>
+<span class="pp-key">4. PROJECT</span>    <span class="pp-val">→ any active goal, task, or initiative the user mentioned</span>
+<span class="pp-key">5. SENTIMENT</span>  <span class="pp-val">→ emotional state arc across session (start → peak → end)</span>
+<span class="pp-key">6. CRM_EVENT</span>  <span class="pp-val">→ billable or escalation-worthy event (complaint, churn_risk, upsell)</span>
+<br>
+<span class="pp-comment"># ══════════════════════════════════════════════════════</span>
+<span class="pp-comment"># CONSTRAINTS — NEVER VIOLATE</span>
+<span class="pp-comment"># ══════════════════════════════════════════════════════</span>
+<span class="pp-constraint">- confidence below 0.60 → DO NOT extract, discard</span>
+<span class="pp-constraint">- do not infer facts from agent statements, only from user utterances</span>
+<span class="pp-constraint">- source_quote must be ≤ 120 chars, verbatim from transcript</span>
+<span class="pp-constraint">- if a fact conflicts with a prior known fact, set conflict: true</span>
+<span class="pp-constraint">- output ONLY the JSON object. No preamble, no explanation, no markdown fences</span>
+<br>
+<span class="pp-comment"># ══════════════════════════════════════════════════════</span>
+<span class="pp-comment"># OUTPUT FORMAT</span>
+<span class="pp-comment"># ══════════════════════════════════════════════════════</span>
+<span class="pp-instruction">Return exactly this structure. All fields required unless marked optional.</span>
+<span class="pp-example">→ See: extraction_output.schema.json (Section 03)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: JSON SCHEMA -->
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <span class="sec-title">Canonical JSON Output Schema</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <span class="ch-title">extraction_output.schema.json · full canonical structure</span>
+        <span class="ch-lang">JSON</span>
+      </div>
+      <div class="code-body">
+<span class="c">// ── ENVELOPE ────────────────────────────────────────────────</span>
+<span class="t">{</span>
+  <span class="n">"extraction_id"</span><span class="t">:</span> <span class="s">"ext_01JXYZ..."</span><span class="t">,</span>         <span class="c">// ULID, generated by worker</span>
+  <span class="n">"session_id"</span><span class="t">:</span>    <span class="s">"sess_88210"</span><span class="t">,</span>            <span class="c">// FK → MongoDB session</span>
+  <span class="n">"user_id"</span><span class="t">:</span>       <span class="s">"usr_f3a9..."</span><span class="t">,</span>            <span class="c">// FK → PG users</span>
+  <span class="n">"org_id"</span><span class="t">:</span>        <span class="s">"org_mango_bank"</span><span class="t">,</span>         <span class="c">// tenant namespace</span>
+  <span class="n">"extracted_at"</span><span class="t">:</span>  <span class="s">"2026-03-27T14:32:00Z"</span><span class="t">,</span>
+  <span class="n">"model_used"</span><span class="t">:</span>    <span class="s">"claude-sonnet-4-20250514"</span><span class="t">,</span>
+  <span class="n">"turn_count"</span><span class="t">:</span>    <span class="v">34</span><span class="t">,</span>
+
+<span class="c">// ── FACTS ────────────────────────────────────────────────────</span>
+  <span class="n">"facts"</span><span class="t">: [</span>
+    <span class="t">{</span>
+      <span class="n">"fact_id"</span><span class="t">:</span>       <span class="s">"fct_001"</span><span class="t">,</span>
+      <span class="n">"key"</span><span class="t">:</span>           <span class="s">"location"</span><span class="t">,</span>            <span class="c">// normalized snake_case key</span>
+      <span class="n">"value"</span><span class="t">:</span>         <span class="s">"Singapore"</span><span class="t">,</span>
+      <span class="n">"data_type"</span><span class="t">:</span>     <span class="s">"string"</span><span class="t">,</span>              <span class="c">// string | number | boolean | date</span>
+      <span class="n">"confidence"</span><span class="t">:</span>    <span class="v">0.97</span><span class="t">,</span>                  <span class="c">// 0.60–1.00 threshold</span>
+      <span class="n">"source"</span><span class="t">:</span>        <span class="s">"explicit"</span><span class="t">,</span>            <span class="c">// explicit | inferred</span>
+      <span class="n">"source_quote"</span><span class="t">:</span>  <span class="s">"I'm based out of Singapore"</span><span class="t">,</span>
+      <span class="n">"conflict"</span><span class="t">:</span>      <span class="v">false</span>                   <span class="c">// true → trigger consolidation</span>
+    <span class="t">}</span>
+  <span class="t">],</span>
+
+<span class="c">// ── PREFERENCES ──────────────────────────────────────────────</span>
+  <span class="n">"preferences"</span><span class="t">: [</span>
+    <span class="t">{</span>
+      <span class="n">"pref_id"</span><span class="t">:</span>       <span class="s">"prf_001"</span><span class="t">,</span>
+      <span class="n">"category"</span><span class="t">:</span>      <span class="s">"communication"</span><span class="t">,</span>       <span class="c">// communication|product|billing|ux</span>
+      <span class="n">"key"</span><span class="t">:</span>           <span class="s">"contact_channel"</span><span class="t">,</span>
+      <span class="n">"value"</span><span class="t">:</span>         <span class="s">"email"</span><span class="t">,</span>
+      <span class="n">"strength"</span><span class="t">:</span>      <span class="s">"strong"</span><span class="t">,</span>              <span class="c">// strong | moderate | weak</span>
+      <span class="n">"source"</span><span class="t">:</span>        <span class="s">"explicit"</span><span class="t">,</span>
+      <span class="n">"source_quote"</span><span class="t">:</span>  <span class="s">"Please always reach me by email, not phone"</span><span class="t">,</span>
+      <span class="n">"confidence"</span><span class="t">:</span>    <span class="v">0.99</span><span class="t">,</span>
+      <span class="n">"conflict"</span><span class="t">:</span>      <span class="v">false</span>
+    <span class="t">}</span>
+  <span class="t">],</span>
+
+<span class="c">// ── EPISODIC ─────────────────────────────────────────────────</span>
+  <span class="n">"episodic"</span><span class="t">: [</span>
+    <span class="t">{</span>
+      <span class="n">"episode_id"</span><span class="t">:</span>    <span class="s">"epi_001"</span><span class="t">,</span>
+      <span class="n">"summary"</span><span class="t">:</span>       <span class="s">"User reported billing discrepancy on invoice #4421. Resolved after agent applied credit."</span><span class="t">,</span>
+      <span class="n">"topic_tags"</span><span class="t">: [</span><span class="s">"billing"</span><span class="t">,</span> <span class="s">"invoice"</span><span class="t">,</span> <span class="s">"credit"</span><span class="t">],</span>
+      <span class="n">"resolved"</span><span class="t">:</span>      <span class="v">true</span><span class="t">,</span>
+      <span class="n">"resolution"</span><span class="t">:</span>   <span class="s">"credit_applied"</span><span class="t">,</span>       <span class="c">// optional</span>
+      <span class="n">"embed_this"</span><span class="t">:</span>    <span class="v">true</span>                    <span class="c">// flag for pgvector pipeline</span>
+    <span class="t">}</span>
+  <span class="t">],</span>
+
+<span class="c">// ── PROJECTS ─────────────────────────────────────────────────</span>
+  <span class="n">"projects"</span><span class="t">: [</span>
+    <span class="t">{</span>
+      <span class="n">"project_id"</span><span class="t">:</span>    <span class="s">"prj_001"</span><span class="t">,</span>
+      <span class="n">"name"</span><span class="t">:</span>          <span class="s">"Multi-agent banking system"</span><span class="t">,</span>
+      <span class="n">"status"</span><span class="t">:</span>        <span class="s">"active"</span><span class="t">,</span>              <span class="c">// active | completed | paused</span>
+      <span class="n">"domain"</span><span class="t">:</span>        <span class="s">"fintech"</span><span class="t">,</span>
+      <span class="n">"summary"</span><span class="t">:</span>       <span class="s">"Building Mango Bank as a multi-agent system on ADK"</span><span class="t">,</span>
+      <span class="n">"embed_this"</span><span class="t">:</span>    <span class="v">true</span>
+    <span class="t">}</span>
+  <span class="t">],</span>
+
+<span class="c">// ── SENTIMENT ────────────────────────────────────────────────</span>
+  <span class="n">"sentiment"</span><span class="t">: {</span>
+    <span class="n">"start"</span><span class="t">:</span>         <span class="s">"neutral"</span><span class="t">,</span>             <span class="c">// positive|neutral|negative|frustrated</span>
+    <span class="n">"peak_negative"</span><span class="t">:</span> <span class="s">"frustrated"</span><span class="t">,</span>
+    <span class="n">"end"</span><span class="t">:</span>           <span class="s">"satisfied"</span><span class="t">,</span>
+    <span class="n">"overall"</span><span class="t">:</span>       <span class="s">"neutral"</span><span class="t">,</span>
+    <span class="n">"escalated"</span><span class="t">:</span>     <span class="v">false</span>
+  <span class="t">},</span>
+
+<span class="c">// ── CRM EVENTS ───────────────────────────────────────────────</span>
+  <span class="n">"crm_events"</span><span class="t">: [</span>
+    <span class="t">{</span>
+      <span class="n">"event_type"</span><span class="t">:</span>   <span class="s">"complaint"</span><span class="t">,</span>           <span class="c">// complaint|churn_risk|upsell|escalation</span>
+      <span class="n">"severity"</span><span class="t">:</span>    <span class="s">"medium"</span><span class="t">,</span>
+      <span class="n">"description"</span><span class="t">:</span> <span class="s">"Billing error caused frustration, resolved same session"</span><span class="t">,</span>
+      <span class="n">"action_required"</span><span class="t">:</span> <span class="v">false</span>
+    <span class="t">}</span>
+  <span class="t">]</span>
+<span class="t">}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: ROUTING TABLE -->
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <span class="sec-title">Extraction Type → Storage Routing</span>
+      <span class="sec-line"></span>
+    </div>
+    <div style="background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden;">
+      <table class="routing-table">
+        <thead>
+          <tr>
+            <th>TYPE</th>
+            <th>PRIMARY STORE</th>
+            <th>SECONDARY STORE</th>
+            <th>EMBED INTO PGVECTOR?</th>
+            <th>TEXT TO EMBED</th>
+            <th>NIGHTLY MD UPDATE?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="type-badge badge-fact">FACT</span></td>
+            <td><span class="store-tag st-pg">PG · user_facts</span></td>
+            <td><span class="store-tag st-mongo">Mongo · memory_entries</span></td>
+            <td style="color:var(--text-dim);">No</td>
+            <td style="color:var(--text-dim); font-family:'Fira Code',monospace; font-size:10px;">—</td>
+            <td style="color:var(--green);">✓ Yes · as bullet</td>
+          </tr>
+          <tr>
+            <td><span class="type-badge badge-pref">PREFERENCE</span></td>
+            <td><span class="store-tag st-pg">PG · user_preferences</span></td>
+            <td><span class="store-tag st-mongo">Mongo · memory_entries</span></td>
+            <td style="color:var(--text-dim);">No</td>
+            <td style="color:var(--text-dim); font-family:'Fira Code',monospace; font-size:10px;">—</td>
+            <td style="color:var(--green);">✓ Yes · as bullet</td>
+          </tr>
+          <tr>
+            <td><span class="type-badge badge-ep">EPISODIC</span></td>
+            <td><span class="store-tag st-mongo">Mongo · memory_entries</span></td>
+            <td><span class="store-tag st-pgv">pgvector · memories_emb</span></td>
+            <td style="color:var(--green);">✓ Always</td>
+            <td style="color:var(--text-dim); font-family:'Fira Code',monospace; font-size:10px;">summary + topic_tags joined</td>
+            <td style="color:var(--text-dim);">No</td>
+          </tr>
+          <tr>
+            <td><span class="type-badge badge-proj">PROJECT</span></td>
+            <td><span class="store-tag st-mongo">Mongo · memory_entries</span></td>
+            <td><span class="store-tag st-pgv">pgvector · memories_emb</span></td>
+            <td style="color:var(--green);">✓ Always</td>
+            <td style="color:var(--text-dim); font-family:'Fira Code',monospace; font-size:10px;">name + domain + summary</td>
+            <td style="color:var(--green);">✓ Yes · Projects section</td>
+          </tr>
+          <tr>
+            <td><span class="type-badge badge-sent">SENTIMENT</span></td>
+            <td><span class="store-tag st-mongo">Mongo · session metadata</span></td>
+            <td><span class="store-tag st-pg">PG · session_audit</span></td>
+            <td style="color:var(--text-dim);">No</td>
+            <td style="color:var(--text-dim); font-family:'Fira Code',monospace; font-size:10px;">—</td>
+            <td style="color:var(--text-dim);">No</td>
+          </tr>
+          <tr>
+            <td><span class="type-badge badge-crm">CRM EVENT</span></td>
+            <td><span class="store-tag st-pg">PG · crm_events</span></td>
+            <td><span class="store-tag st-mongo">Mongo · session metadata</span></td>
+            <td style="color:var(--text-dim);">No</td>
+            <td style="color:var(--text-dim); font-family:'Fira Code',monospace; font-size:10px;">—</td>
+            <td style="color:var(--text-dim);">No</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 5: EXECUTION FLOW -->
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-num">05</span>
+      <span class="sec-title">Full Execution Flow</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="exec-flow">
+      <div class="flow-step">
+        <div class="flow-num">01</div>
+        <div class="flow-content">
+          <div class="fc-main">
+            <div class="fc-title">User chat turn received</div>
+            <div class="fc-detail">Append to MongoDB sessions.{session_id}.turns[] · update hot KV · increment turn_count</div>
+          </div>
+          <div class="fc-stores"><span class="store-tag st-mongo">WRITE → Mongo</span></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">02</div>
+        <div class="flow-content">
+          <div class="fc-main">
+            <div class="fc-title">Trigger fires (session_end | N-turns | cron)</div>
+            <div class="fc-detail">Enqueue extraction job · pass session_id, user_id, org_id · mark session as "processing"</div>
+          </div>
+          <div class="fc-stores"><span class="store-tag st-mongo">READ → Mongo</span></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">03</div>
+        <div class="flow-content">
+          <div class="fc-main">
+            <div class="fc-title">LLM extraction worker runs</div>
+            <div class="fc-detail">Pull full transcript from Mongo · send to LLM with system prompt · receive canonical JSON · validate schema · reject if malformed</div>
+          </div>
+          <div class="fc-stores"><span class="store-tag st-mongo">READ → Mongo</span></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">04</div>
+        <div class="flow-content">
+          <div class="fc-main">
+            <div class="fc-title">Consolidation check (facts + preferences)</div>
+            <div class="fc-detail">For each FACT + PREFERENCE: query PG for existing record by (user_id, key) · if conflict=true → apply recency-wins · set overridden_by FK · log to audit</div>
+          </div>
+          <div class="fc-stores"><span class="store-tag st-pg">READ/WRITE → PG</span></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">05</div>
+        <div class="flow-content">
+          <div class="fc-main">
+            <div class="fc-title">Write episodic + project memories to Mongo</div>
+            <div class="fc-detail">Insert memory_entries documents · set embed_this=true · link back to extraction_id and session_id</div>
+          </div>
+          <div class="fc-stores"><span class="store-tag st-mongo">WRITE → Mongo</span></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">06</div>
+        <div class="flow-content">
+          <div class="fc-main">
+            <div class="fc-title">Embed episodic + project entries → pgvector</div>
+            <div class="fc-detail">For all entries where embed_this=true · generate embedding (text-embedding-3-large) · INSERT into memories_embeddings with user_id, session_date, mongo_memory_id</div>
+          </div>
+          <div class="fc-stores"><span class="store-tag st-pgv">WRITE → pgvector</span></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">07</div>
+        <div class="flow-content">
+          <div class="fc-main">
+            <div class="fc-title">Write CRM events + sentiment to PG audit</div>
+            <div class="fc-detail">INSERT crm_events · UPDATE session_audit with sentiment arc · trigger CRM webhook if action_required=true</div>
+          </div>
+          <div class="fc-stores"><span class="store-tag st-pg">WRITE → PG</span></div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">08</div>
+        <div class="flow-content">
+          <div class="fc-main">
+            <div class="fc-title">Nightly batch: regenerate user profile.md</div>
+            <div class="fc-detail">Compile {user_id}_profile.md from PG facts + preferences + active projects · store in /profiles/ · loaded at next session start with zero vector search cost</div>
+          </div>
+          <div class="fc-stores"><span class="store-tag st-md">WRITE → MD</span><span class="store-tag st-pg">READ → PG</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 6: NIGHTLY BATCH / MD SAMPLE -->
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-num">06</span>
+      <span class="sec-title">Nightly Batch → Golden Profile.md</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="batch-block">
+      <div class="batch-grid">
+        <div class="batch-node">
+          <div class="bn-icon">🗄️</div>
+          <div class="bn-name">PostgreSQL</div>
+          <div class="bn-detail">facts · prefs · projects</div>
+        </div>
+        <div class="batch-arrow">→</div>
+        <div class="batch-node">
+          <div class="bn-icon">⚙️</div>
+          <div class="bn-name">Batch Compiler</div>
+          <div class="bn-detail">cron 0 2 * * * · LLM condense</div>
+        </div>
+        <div class="batch-arrow">→</div>
+        <div class="batch-node">
+          <div class="bn-icon">📄</div>
+          <div class="bn-name">{user_id}_profile.md</div>
+          <div class="bn-detail">loaded at session init · ~400 tokens</div>
+        </div>
+      </div>
+      <div class="md-sample">
+<span class="md-h1"># USER PROFILE · usr_f3a9 · org: mango_bank</span>
+<span class="md-comment">## generated: 2026-03-27T02:00:00Z · do not edit manually</span>
+<br>
+<span class="md-h2">## FACTS</span>
+<span class="md-bullet">- </span><span class="md-key">location:</span> <span class="md-val">Singapore</span>
+<span class="md-bullet">- </span><span class="md-key">account_tier:</span> <span class="md-val">enterprise</span>
+<span class="md-bullet">- </span><span class="md-key">role:</span> <span class="md-val">Principal Architect</span>
+<span class="md-bullet">- </span><span class="md-key">language:</span> <span class="md-val">English</span>
+<br>
+<span class="md-h2">## ACTIVE PREFERENCES</span>
+<span class="md-bullet">- </span><span class="md-key">contact_channel:</span> <span class="md-val">email (strong · explicit)</span>
+<span class="md-bullet">- </span><span class="md-key">friction_tolerance:</span> <span class="md-val">low — skip verification steps if possible</span>
+<span class="md-bullet">- </span><span class="md-key">communication_style:</span> <span class="md-val">direct · no sugar-coating</span>
+<br>
+<span class="md-h2">## ACTIVE PROJECTS</span>
+<span class="md-bullet">- </span><span class="md-key">[ACTIVE]</span> <span class="md-val">Mango Bank · multi-agent banking system on Google ADK</span>
+<span class="md-bullet">- </span><span class="md-key">[ACTIVE]</span> <span class="md-val">Agent Village · digital twin simulation platform</span>
+<span class="md-bullet">- </span><span class="md-key">[ACTIVE]</span> <span class="md-val">EA Agents · personal executive assistant agent</span>
+<br>
+<span class="md-h2">## RECENT CONTEXT</span>
+<span class="md-bullet">- </span><span class="md-val">2026-03-25: billing discrepancy resolved, credit applied</span>
+<span class="md-bullet">- </span><span class="md-val">2026-03-20: discussed memory architecture patterns for agent systems</span>
+<span class="md-comment">## END PROFILE · next_update: 2026-03-28T02:00:00Z</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 7: GDPR -->
+  <div class="section">
+    <div class="sec-head">
+      <span class="sec-num">07</span>
+      <span class="sec-title">GDPR / Right to be Forgotten — Cascade Delete</span>
+      <span class="sec-line"></span>
+    </div>
+    <div class="gdpr-row">
+      <div class="gdpr-card">
+        <div class="gc-title">⚠️ Delete Sequence (strict order)</div>
+        <ul>
+          <li>PG: SET users.status = 'deletion_requested'</li>
+          <li>PG: SELECT all session_ids WHERE user_id = $1</li>
+          <li>Mongo: deleteMany({ session_id: { $in: session_ids }})</li>
+          <li>Mongo: deleteMany({ user_id: $1 }) // memory_entries</li>
+          <li>pgvector: DELETE WHERE user_id = $1 // embeddings</li>
+          <li>PG: DELETE user_facts, user_preferences, crm_events</li>
+          <li>PG: DELETE users WHERE id = $1</li>
+          <li>FS: rm -f /profiles/{user_id}_profile.md</li>
+          <li>PG: INSERT deletion_audit log with timestamp</li>
+        </ul>
+      </div>
+      <div class="gdpr-card">
+        <div class="gc-title">🔐 Namespace Isolation (multi-tenant)</div>
+        <ul>
+          <li>Every query MUST include WHERE org_id = $org AND user_id = $uid</li>
+          <li>pgvector: filter by user_id BEFORE cosine scoring</li>
+          <li>Mongo: compound index on (org_id, user_id, session_id)</li>
+          <li>PG RLS: enable row_security on all user tables</li>
+          <li>PG: CREATE POLICY per_user ON user_facts USING (user_id = current_user_id())</li>
+          <li>Profile MD: stored at /profiles/{org_id}/{user_id}.md</li>
+          <li>IAM: service account per org_id, no cross-tenant tokens</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
