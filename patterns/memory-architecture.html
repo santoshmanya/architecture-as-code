@@ -1,0 +1,868 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enterprise Agent Memory Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600&family=Space+Grotesk:wght@300;400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --border: #1e2330;
+    --border-bright: #2a3045;
+    --text: #c8d0e0;
+    --text-dim: #5a6478;
+    --text-bright: #e8edf5;
+    --mongo: #00ed64;
+    --pg: #336791;
+    --pgv: #7c3aed;
+    --md: #f59e0b;
+    --accent: #38bdf8;
+    --red: #f87171;
+    --green: #4ade80;
+    --orange: #fb923c;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    padding: 40px 24px;
+    line-height: 1.6;
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* HEADER */
+  .header {
+    border-bottom: 1px solid var(--border-bright);
+    padding-bottom: 28px;
+    margin-bottom: 40px;
+  }
+
+  .header-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: -0.5px;
+  }
+
+  .header p {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-top: 6px;
+  }
+
+  /* SECTION TITLES */
+  .section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* STORE LEGEND */
+  .store-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .store-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .store-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .store-card.mongo::before { background: var(--mongo); }
+  .store-card.pg::before { background: var(--pg); }
+  .store-card.pgv::before { background: var(--pgv); }
+  .store-card.md::before { background: var(--md); }
+
+  .store-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+
+  .store-card .store-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+  }
+
+  .store-card .store-role {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 10px;
+  }
+
+  .store-card .store-desc {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  /* PIPELINE */
+  .pipeline {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 40px;
+  }
+
+  .pipeline-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .pipeline-phase {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 20px;
+    align-items: start;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .pipeline-phase:last-child { border-bottom: none; }
+
+  .phase-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .phase-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  .phase-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-bright);
+  }
+
+  .phase-timing {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-top: 4px;
+    width: fit-content;
+  }
+
+  .phase-timing.sync { background: rgba(56,189,248,0.1); color: var(--accent); }
+  .phase-timing.async { background: rgba(251,146,60,0.1); color: var(--orange); }
+  .phase-timing.pre { background: rgba(74,222,128,0.1); color: var(--green); }
+
+  .phase-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .phase-step {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .step-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .step-body {}
+  .step-title { font-weight: 600; color: var(--text-bright); margin-bottom: 2px; }
+  .step-detail { color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+
+  .store-badge {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 6px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+
+  .badge-mongo { background: rgba(0,237,100,0.12); color: var(--mongo); }
+  .badge-pg { background: rgba(51,103,145,0.2); color: #60a5fa; }
+  .badge-pgv { background: rgba(124,58,237,0.15); color: #a78bfa; }
+  .badge-md { background: rgba(245,158,11,0.12); color: var(--md); }
+
+  /* SCHEMA */
+  .schema-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .schema-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .schema-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-bright);
+  }
+
+  .schema-body {
+    padding: 14px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    line-height: 1.8;
+  }
+
+  .field { display: flex; gap: 8px; }
+  .field-name { color: var(--accent); min-width: 140px; }
+  .field-type { color: var(--text-dim); }
+  .field-note { color: var(--text); font-size: 10px; margin-left: 4px; }
+  .field-comment { color: #3a4560; font-size: 10px; }
+
+  .schema-divider {
+    border: none;
+    border-top: 1px dashed var(--border);
+    margin: 8px 0;
+  }
+
+  /* EXTRACTION TYPES */
+  .extraction-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .extraction-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  .extraction-card .type-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .type-fact { color: var(--accent); }
+  .type-pref { color: var(--mongo); }
+  .type-episodic { color: var(--md); }
+
+  .extraction-card h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+
+  .extraction-example {
+    background: var(--bg);
+    border-radius: 5px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+
+  .ex-input { color: var(--text-dim); margin-bottom: 3px; font-style: italic; }
+  .ex-arrow { color: var(--border-bright); }
+  .ex-output { color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+
+  /* RAG RETRIEVAL */
+  .rag-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 40px;
+  }
+
+  .rag-flow {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  .rag-node {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .rag-node .node-icon { font-size: 20px; margin-bottom: 6px; }
+  .rag-node .node-name { font-size: 11px; font-weight: 600; color: var(--text-bright); }
+  .rag-node .node-detail { font-size: 10px; color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; }
+
+  .flow-arrow {
+    color: var(--border-bright);
+    font-size: 18px;
+    text-align: center;
+  }
+
+  .query-strategy {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .strategy-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+  }
+
+  .strategy-card .s-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .strategy-card ul {
+    list-style: none;
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .strategy-card ul li::before {
+    content: '→ ';
+    color: var(--border-bright);
+  }
+
+  /* PROMPT INJECTION */
+  .prompt-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 40px;
+  }
+
+  .prompt-template {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    line-height: 1.8;
+  }
+
+  .tpl-comment { color: #2d3a50; }
+  .tpl-key { color: var(--accent); }
+  .tpl-val { color: var(--green); }
+  .tpl-var { color: var(--md); }
+  .tpl-text { color: var(--text); }
+
+  /* CONSOLIDATION */
+  .consolidation-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+    margin-top: 20px;
+  }
+
+  .conflict-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    font-size: 11px;
+  }
+
+  .conflict-card .c-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .conflict-old { color: var(--red); text-decoration: line-through; opacity: 0.7; }
+  .conflict-new { color: var(--green); }
+
+  .merge-label {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  /* FOOTER */
+  .infra-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .infra-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .infra-pill .i-name { font-weight: 600; color: var(--text-bright); }
+  .infra-pill .i-use { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); }
+
+  .connector { color: var(--border-bright); margin: 0 4px; }
+
+  @media (max-width: 700px) {
+    .store-grid, .extraction-grid, .infra-row { grid-template-columns: 1fr 1fr; }
+    .schema-grid { grid-template-columns: 1fr; }
+    .rag-flow { grid-template-columns: 1fr; }
+    .flow-arrow { transform: rotate(90deg); }
+    .pipeline-phase { grid-template-columns: 1fr; }
+    .consolidation-row { grid-template-columns: 1fr; }
+    .query-strategy { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-tag">▸ Enterprise Agent Memory · Customer Support Pattern</div>
+    <h1>Episodic Memory Architecture</h1>
+    <p>Extraction → Storage → RAG Retrieval → Pre-prompt Injection · MongoDB + PostgreSQL + pgvector + Markdown</p>
+  </div>
+
+  <!-- STORES -->
+  <div class="section-title">Storage Layer</div>
+  <div class="store-grid">
+    <div class="store-card mongo">
+      <div class="store-name"><span class="store-dot" style="background:var(--mongo)"></span>MongoDB</div>
+      <div class="store-role">// session · episodic · raw</div>
+      <div class="store-desc">Raw session documents, chat history, extracted memory blobs. Flexible schema for evolving preference structures. Primary write target during live chat.</div>
+    </div>
+    <div class="store-card pg">
+      <div class="store-name"><span class="store-dot" style="background:var(--pg)"></span>PostgreSQL</div>
+      <div class="store-role">// facts · preferences · audit</div>
+      <div class="store-desc">Structured user facts, preference records, consolidation log, and audit trail. Source of truth for hard entities like account_id, location, policy tier.</div>
+    </div>
+    <div class="store-card pgv">
+      <div class="store-name"><span class="store-dot" style="background:var(--pgv)"></span>pgvector</div>
+      <div class="store-role">// semantic search · RAG</div>
+      <div class="store-desc">Embeddings of extracted memories and episodic reflections. Enables "remind me what we discussed" semantic recall with cosine similarity queries.</div>
+    </div>
+    <div class="store-card md">
+      <div class="store-name"><span class="store-dot" style="background:var(--md)"></span>Markdown Files</div>
+      <div class="store-role">// persona · config · prompts</div>
+      <div class="store-desc">Agent persona definitions, system prompt templates, consolidation rules, and per-tenant configuration. Version-controlled. Loaded at agent init.</div>
+    </div>
+  </div>
+
+  <!-- PIPELINE -->
+  <div class="section-title">Processing Pipeline</div>
+  <div class="pipeline">
+    <div class="pipeline-flow">
+
+      <div class="pipeline-phase">
+        <div class="phase-label">
+          <span class="phase-num">PHASE 01</span>
+          <span class="phase-name">Live Session</span>
+          <span class="phase-timing sync">SYNC · IN-CHAT</span>
+        </div>
+        <div class="phase-content">
+          <div class="phase-step">
+            <span class="step-icon">📥</span>
+            <div class="step-body">
+              <div class="step-title">Session Hydration <span class="store-badge badge-mongo">MONGO</span><span class="store-badge badge-pg">PG</span></div>
+              <div class="step-detail">On conversation start → fetch user_id facts from PG + last 3 session summaries from Mongo → inject into system prompt</div>
+            </div>
+          </div>
+          <div class="phase-step">
+            <span class="step-icon">💬</span>
+            <div class="step-body">
+              <div class="step-title">Raw Turn Logging <span class="store-badge badge-mongo">MONGO</span></div>
+              <div class="step-detail">Every turn appended to sessions.{session_id}.turns[] · includes role, content, timestamp, intent_tag</div>
+            </div>
+          </div>
+          <div class="phase-step">
+            <span class="step-icon">🔑</span>
+            <div class="step-body">
+              <div class="step-title">Hot KV Store <span class="store-badge badge-mongo">MONGO</span></div>
+              <div class="step-detail">In-session key-value map: { "account_id": "ACC-001", "issue": "billing", "frustration_level": "high" } · agent reads this every turn</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-phase">
+        <div class="phase-label">
+          <span class="phase-num">PHASE 02</span>
+          <span class="phase-name">Post-Chat Extraction</span>
+          <span class="phase-timing async">ASYNC · BACKGROUND</span>
+        </div>
+        <div class="phase-content">
+          <div class="phase-step">
+            <span class="step-icon">🤖</span>
+            <div class="step-body">
+              <div class="step-title">LLM Extraction Job</div>
+              <div class="step-detail">Triggered on session_end event · LLM reads full transcript · extracts FACTS, PREFERENCES, EPISODIC_REFLECTIONS as structured JSON</div>
+            </div>
+          </div>
+          <div class="phase-step">
+            <span class="step-icon">⚖️</span>
+            <div class="step-body">
+              <div class="step-title">Consolidation Check <span class="store-badge badge-pg">PG</span></div>
+              <div class="step-detail">Compare extracted facts vs existing records · detect conflicts (e.g. diet: vegetarian → meat-eater) · apply recency-wins rule · log delta in audit table</div>
+            </div>
+          </div>
+          <div class="phase-step">
+            <span class="step-icon">🗄️</span>
+            <div class="step-body">
+              <div class="step-title">Write to Stores <span class="store-badge badge-pg">PG</span><span class="store-badge badge-mongo">MONGO</span><span class="store-badge badge-pgv">pgvector</span></div>
+              <div class="step-detail">Facts → PG user_facts · Episodic reflections → Mongo memory_entries · Embed reflection text → pgvector memories_embeddings</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pipeline-phase">
+        <div class="phase-label">
+          <span class="phase-num">PHASE 03</span>
+          <span class="phase-name">Pre-Prompt Injection</span>
+          <span class="phase-timing pre">SYNC · CHAT START</span>
+        </div>
+        <div class="phase-content">
+          <div class="phase-step">
+            <span class="step-icon">🔍</span>
+            <div class="step-body">
+              <div class="step-title">Semantic Recall <span class="store-badge badge-pgv">pgvector</span></div>
+              <div class="step-detail">Embed current user query → cosine similarity search → retrieve top-3 relevant past memories with session_date, summary</div>
+            </div>
+          </div>
+          <div class="phase-step">
+            <span class="step-icon">📋</span>
+            <div class="step-body">
+              <div class="step-title">Context Assembly <span class="store-badge badge-pg">PG</span><span class="store-badge badge-md">MD</span></div>
+              <div class="step-detail">Merge: agent persona (MD) + hard facts (PG) + top preferences (PG) + recalled memories (pgvector) → inject as structured system prompt block</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- EXTRACTION TYPES -->
+  <div class="section-title">What Gets Extracted</div>
+  <div class="extraction-grid">
+    <div class="extraction-card">
+      <span class="type-label type-fact">▸ TYPE: FACT</span>
+      <h4>Hard Facts</h4>
+      <div class="extraction-example">
+        <div class="ex-input">"My account number is ACC-88210"</div>
+        <div class="ex-arrow">↓ extracted</div>
+        <div class="ex-output">{ key: "account_id", value: "ACC-88210", confidence: 1.0 }</div>
+      </div>
+      <div class="extraction-example">
+        <div class="ex-input">"I'm based in Singapore"</div>
+        <div class="ex-arrow">↓ extracted</div>
+        <div class="ex-output">{ key: "location", value: "Singapore", confidence: 0.95 }</div>
+      </div>
+      <div style="font-size:11px; color:var(--text-dim); margin-top:8px;">→ Stored in PG user_facts · overwrites on conflict</div>
+    </div>
+    <div class="extraction-card">
+      <span class="type-label type-pref">▸ TYPE: PREFERENCE</span>
+      <h4>User Preferences</h4>
+      <div class="extraction-example">
+        <div class="ex-input">"I always prefer email over phone"</div>
+        <div class="ex-arrow">↓ extracted</div>
+        <div class="ex-output">{ key: "contact_pref", value: "email", source: "explicit" }</div>
+      </div>
+      <div class="extraction-example">
+        <div class="ex-input">"Can we skip the verification questions?"</div>
+        <div class="ex-arrow">↓ extracted</div>
+        <div class="ex-output">{ key: "friction_tolerance", value: "low", source: "inferred" }</div>
+      </div>
+      <div style="font-size:11px; color:var(--text-dim); margin-top:8px;">→ Stored in PG user_preferences · consolidation-safe</div>
+    </div>
+    <div class="extraction-card">
+      <span class="type-label type-episodic">▸ TYPE: EPISODIC</span>
+      <h4>Session Reflections</h4>
+      <div class="extraction-example">
+        <div class="ex-input">User spent 20 min on Wi-Fi troubleshooting, escalated twice, resolved on 3rd agent</div>
+        <div class="ex-arrow">↓ extracted</div>
+        <div class="ex-output">{ summary: "frustrated by Wi-Fi steps", sentiment: "negative", resolved: true }</div>
+      </div>
+      <div style="font-size:11px; color:var(--text-dim); margin-top:8px;">→ Stored in Mongo + embedded in pgvector for semantic recall</div>
+    </div>
+  </div>
+
+  <!-- SCHEMA -->
+  <div class="section-title">Schema Reference</div>
+  <div class="schema-grid">
+    <div class="schema-block">
+      <div class="schema-header"><span class="store-dot" style="background:var(--pg)"></span>PG · user_facts</div>
+      <div class="schema-body">
+        <div class="field"><span class="field-name">user_id</span><span class="field-type">UUID</span><span class="field-note">PK</span></div>
+        <div class="field"><span class="field-name">key</span><span class="field-type">VARCHAR(100)</span></div>
+        <div class="field"><span class="field-name">value</span><span class="field-type">TEXT</span></div>
+        <div class="field"><span class="field-name">confidence</span><span class="field-type">FLOAT</span></div>
+        <div class="field"><span class="field-name">source</span><span class="field-type">ENUM(explicit,inferred)</span></div>
+        <div class="field"><span class="field-name">extracted_at</span><span class="field-type">TIMESTAMPTZ</span></div>
+        <div class="field"><span class="field-name">session_id</span><span class="field-type">UUID</span><span class="field-note">FK</span></div>
+        <hr class="schema-divider">
+        <div class="field tpl-comment"><span>-- INDEX: (user_id, key) UNIQUE</span></div>
+        <div class="field tpl-comment"><span>-- ON CONFLICT: UPDATE recency-wins</span></div>
+      </div>
+    </div>
+    <div class="schema-block">
+      <div class="schema-header"><span class="store-dot" style="background:var(--pg)"></span>PG · user_preferences</div>
+      <div class="schema-body">
+        <div class="field"><span class="field-name">user_id</span><span class="field-type">UUID</span></div>
+        <div class="field"><span class="field-name">category</span><span class="field-type">VARCHAR(50)</span><span class="field-note">e.g. contact</span></div>
+        <div class="field"><span class="field-name">key</span><span class="field-type">VARCHAR(100)</span></div>
+        <div class="field"><span class="field-name">value</span><span class="field-type">TEXT</span></div>
+        <div class="field"><span class="field-name">overridden_by</span><span class="field-type">UUID</span><span class="field-note">FK self</span></div>
+        <div class="field"><span class="field-name">is_active</span><span class="field-type">BOOLEAN</span><span class="field-note">DEFAULT true</span></div>
+        <div class="field"><span class="field-name">updated_at</span><span class="field-type">TIMESTAMPTZ</span></div>
+        <hr class="schema-divider">
+        <div class="field tpl-comment"><span>-- soft delete via overridden_by chain</span></div>
+      </div>
+    </div>
+    <div class="schema-block">
+      <div class="schema-header"><span class="store-dot" style="background:var(--mongo)"></span>Mongo · memory_entries</div>
+      <div class="schema-body">
+        <div class="field"><span class="field-name">_id</span><span class="field-type">ObjectId</span></div>
+        <div class="field"><span class="field-name">user_id</span><span class="field-type">String</span></div>
+        <div class="field"><span class="field-name">session_id</span><span class="field-type">String</span></div>
+        <div class="field"><span class="field-name">session_date</span><span class="field-type">ISODate</span></div>
+        <div class="field"><span class="field-name">memory_type</span><span class="field-type">String</span><span class="field-note">fact|pref|episodic</span></div>
+        <div class="field"><span class="field-name">content</span><span class="field-type">String</span><span class="field-note">human-readable</span></div>
+        <div class="field"><span class="field-name">embedding_id</span><span class="field-type">String</span><span class="field-note">→ pgvector</span></div>
+        <div class="field"><span class="field-name">sentiment</span><span class="field-type">String</span></div>
+        <div class="field"><span class="field-name">tags</span><span class="field-type">Array&lt;String&gt;</span></div>
+      </div>
+    </div>
+    <div class="schema-block">
+      <div class="schema-header"><span class="store-dot" style="background:var(--pgv)"></span>pgvector · memories_embeddings</div>
+      <div class="schema-body">
+        <div class="field"><span class="field-name">id</span><span class="field-type">UUID</span><span class="field-note">PK</span></div>
+        <div class="field"><span class="field-name">user_id</span><span class="field-type">UUID</span></div>
+        <div class="field"><span class="field-name">mongo_memory_id</span><span class="field-type">TEXT</span></div>
+        <div class="field"><span class="field-name">embedding</span><span class="field-type">vector(1536)</span></div>
+        <div class="field"><span class="field-name">content_preview</span><span class="field-type">TEXT</span></div>
+        <div class="field"><span class="field-name">session_date</span><span class="field-type">TIMESTAMPTZ</span></div>
+        <div class="field"><span class="field-name">memory_type</span><span class="field-type">TEXT</span></div>
+        <hr class="schema-divider">
+        <div class="field tpl-comment"><span>-- INDEX: vector(embedding) ivfflat</span></div>
+        <div class="field tpl-comment"><span>-- QUERY: ORDER BY embedding &lt;=&gt; $1 LIMIT 3</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RAG FLOW -->
+  <div class="section-title">RAG Retrieval Flow</div>
+  <div class="rag-block">
+    <div class="rag-flow">
+      <div class="rag-node">
+        <div class="node-icon">💬</div>
+        <div class="node-name">User Message</div>
+        <div class="node-detail">incoming query</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="rag-node">
+        <div class="node-icon">🧮</div>
+        <div class="node-name">Embed Query</div>
+        <div class="node-detail">text-embedding-3</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="rag-node">
+        <div class="node-icon">🔎</div>
+        <div class="node-name">pgvector Search</div>
+        <div class="node-detail">cosine · top-3 · scoped to user_id</div>
+      </div>
+    </div>
+    <div class="query-strategy">
+      <div class="strategy-card">
+        <div class="s-title">🎯 Retrieval Query</div>
+        <ul>
+          <li>Filter strictly by user_id (no cross-tenant bleed)</li>
+          <li>Score threshold &gt; 0.75 to avoid noise</li>
+          <li>Return: content_preview + session_date + memory_type</li>
+          <li>Join back to Mongo for full episodic detail if needed</li>
+        </ul>
+      </div>
+      <div class="strategy-card">
+        <div class="s-title">💡 Reminder Phrasing</div>
+        <ul>
+          <li>"On March 14th, you mentioned you prefer email contact"</li>
+          <li>"Last time we spoke about your Wi-Fi issue — that was resolved"</li>
+          <li>"You've previously told us you're based in Singapore"</li>
+          <li>Only surface if similarity score &gt; 0.82 to avoid false recalls</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRE-PROMPT TEMPLATE -->
+  <div class="section-title">Pre-Prompt Injection Template</div>
+  <div class="prompt-block">
+    <div class="prompt-template">
+<span class="tpl-comment"># ── AGENT PERSONA ─────────────────────────────────────</span>
+<span class="tpl-text">{{ load: personas/customer-support.md }}</span>
+<span class="tpl-text"> </span>
+<span class="tpl-comment"># ── KNOWN USER FACTS (from PG) ────────────────────────</span>
+<span class="tpl-key">user_id:</span> <span class="tpl-var">{{ user.id }}</span>
+<span class="tpl-key">account_tier:</span> <span class="tpl-var">{{ user.facts.account_tier }}</span>
+<span class="tpl-key">location:</span> <span class="tpl-var">{{ user.facts.location }}</span>
+<span class="tpl-key">language_pref:</span> <span class="tpl-var">{{ user.facts.language }}</span>
+<span class="tpl-text"> </span>
+<span class="tpl-comment"># ── ACTIVE PREFERENCES (from PG) ──────────────────────</span>
+<span class="tpl-key">contact_preference:</span> <span class="tpl-var">{{ user.prefs.contact_pref }}</span>
+<span class="tpl-key">friction_tolerance:</span> <span class="tpl-var">{{ user.prefs.friction_tolerance }}</span>
+<span class="tpl-text"> </span>
+<span class="tpl-comment"># ── RECALLED MEMORIES (from pgvector, top-3) ──────────</span>
+<span class="tpl-key">relevant_past_interactions:</span>
+<span class="tpl-var">{% for memory in recalled_memories %}</span>
+  <span class="tpl-key">- date:</span> <span class="tpl-var">{{ memory.session_date | format_date }}</span>
+    <span class="tpl-key">summary:</span> <span class="tpl-var">{{ memory.content_preview }}</span>
+    <span class="tpl-key">type:</span> <span class="tpl-var">{{ memory.memory_type }}</span>
+<span class="tpl-var">{% endfor %}</span>
+<span class="tpl-text"> </span>
+<span class="tpl-comment"># ── INSTRUCTION ───────────────────────────────────────</span>
+<span class="tpl-text">If any recalled memory is directly relevant to the user's current</span>
+<span class="tpl-text">message, naturally reference it. E.g. "On [date], you mentioned..."</span>
+<span class="tpl-text">Do not surface all memories — only reference if relevance score > 0.82</span>
+    </div>
+  </div>
+
+  <!-- CONSOLIDATION -->
+  <div class="section-title">Preference Consolidation (Conflict Resolution)</div>
+  <div class="pipeline" style="padding: 20px 28px;">
+    <div style="font-size:12px; color:var(--text-dim); margin-bottom:16px;">When the async extraction job detects a conflicting preference, apply <strong style="color:var(--text)">recency-wins</strong> and preserve audit trail:</div>
+    <div class="consolidation-row">
+      <div class="conflict-card">
+        <span class="c-label" style="color:var(--red)">▸ EXISTING RECORD (PG)</span>
+        <div style="margin-bottom:6px;"><span class="conflict-old">diet_preference = "vegetarian"</span></div>
+        <div style="font-size:10px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace;">extracted: 2025-11-12 · session: S-4421</div>
+      </div>
+      <div class="merge-label">
+        <div style="color:var(--accent); font-size:18px; margin-bottom:4px;">⟹</div>
+        <div>recency-wins</div>
+        <div>audit logged</div>
+        <div>overridden_by FK set</div>
+      </div>
+      <div class="conflict-card">
+        <span class="c-label" style="color:var(--green)">▸ NEW RECORD (PG)</span>
+        <div style="margin-bottom:6px;"><span class="conflict-new">diet_preference = "meat-eater"</span></div>
+        <div style="font-size:10px; color:var(--text-dim); font-family:'IBM Plex Mono',monospace;">extracted: 2026-03-27 · session: S-9812</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFRA SUMMARY -->
+  <div class="section-title" style="margin-top:40px;">Infra Summary</div>
+  <div class="infra-row">
+    <div class="infra-pill">
+      <div class="i-name">MongoDB</div>
+      <div class="i-use">sessions · raw turns · memory_entries · hot KV</div>
+    </div>
+    <div class="infra-pill">
+      <div class="i-name">PostgreSQL</div>
+      <div class="i-use">user_facts · user_preferences · audit · consolidation</div>
+    </div>
+    <div class="infra-pill">
+      <div class="i-name">pgvector</div>
+      <div class="i-use">memories_embeddings · semantic recall · cosine search</div>
+    </div>
+    <div class="infra-pill">
+      <div class="i-name">Markdown</div>
+      <div class="i-use">agent personas · prompt templates · consolidation rules</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
